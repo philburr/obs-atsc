@@ -1,0 +1,3 @@
+[submodule "external/atsc"]
+	path = external/atsc
+	url = https://github.com/philburr/atsc.git
