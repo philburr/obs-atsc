@@ -110,7 +110,6 @@ struct atsc_output {
         running = false;
         os_event_signal(event);
         pthread_join(thread, 0);
-        printf("xmit thread stopped\n");
         avformat_free_context(fmt_ctx);
     }
 
