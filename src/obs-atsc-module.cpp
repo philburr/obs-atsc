@@ -31,7 +31,6 @@ template<typename T>
 using unique_freeable_ptr = std::unique_ptr<T,std::function<void(T*)>>;
 
 OBS_DECLARE_MODULE()
-OBS_MODULE_USE_DEFAULT_LOCALE("obs-atsc", "en-US")
 
 static ATSCOutputUI *g_atsc_ui;
 
