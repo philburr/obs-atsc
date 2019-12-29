@@ -38,3 +38,4 @@ target_link_libraries(obs-atsc
 target_compile_options(obs-atsc PRIVATE -Wno-unused-parameter -Wno-missing-field-initializers)
 
 #target_compile_features(obs-atsc PRIVATE cxx_std_17)
+install_obs_plugin_with_data(obs-atsc ../data)

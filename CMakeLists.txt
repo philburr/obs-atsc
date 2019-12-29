@@ -8,6 +8,9 @@ if (NOT IS_DIRECTORY ${OBS_INSTALL_DIR})
 endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH ${OBS_SOURCE_DIR}/cmake)
+
+include(Modules/ObsHelpers)
 
 set(_LIBOBS_LIBRARY_DIRS ${OBS_INSTALL_DIR}/lib)
 set(_LIBOBS_INCLUDE_DIRS ${OBS_SOURCE_DIR})
@@ -26,5 +29,3 @@ set_target_properties( frontend-tools PROPERTIES IMPORTED_LOCATION ${LIBOBS_FRON
 add_subdirectory(external/atsc EXCLUDE_FROM_ALL)
 add_subdirectory(src)
 
-install(TARGETS obs-atsc
-		LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/obs-plugins)
