@@ -16,7 +16,7 @@
 #include "obs-atsc-module-ui.h"
 
 #include "atsc/atsc.h"
-#include "atsc/atsc_parameters.h"
+#include "common/atsc_parameters.h"
 
 extern "C" {
 #include <sys/types.h>
@@ -70,18 +70,13 @@ struct atsc_output {
 
                 stream = device->setupStream(SOAPY_SDR_TX, SOAPY_SDR_CF32, {0});
                 samples = device->getStreamMTU(stream);
-
-                result = unique_freeable_ptr<int16_t>((int16_t*)_mm_malloc(sizeof(int16_t) * atsc_parameters::ATSC_SYMBOLS_PER_FIELD, 32), [](int16_t* p) {
-                    _mm_free(p);
-                });
-
             } catch(...) {
                 enable_sdr = false;
             }
         }
         enabled = enable_sdr;
 
-        encoder = atsc_encoder::create();
+        encoder = atsc::atsc_encoder::create();
 
         int ret = avformat_alloc_output_context2(&fmt_ctx, NULL, "mpegts", NULL);
 
@@ -118,14 +113,14 @@ struct atsc_output {
     int ts_fd;
 
     void encode(uint8_t *buf, int buf_size) {
-        assert((buf_size % atsc_parameters::ATSC_MPEG2_BYTES) == 0);
-        encoder->process(buf, buf_size / atsc_parameters::ATSC_MPEG2_BYTES, [this](void* data, unsigned sz) {
+        assert((buf_size % ATSC_MPEG2_BYTES) == 0);
+        encoder->process(buf, buf_size / ATSC_MPEG2_BYTES, [this](void* data, unsigned sz) {
 
             int flags = 0;
             (void)sz;
 
             std::complex<float> *xfer = (std::complex<float>*)data;
-            auto remaining = size_t(atsc_parameters::ATSC_SYMBOLS_PER_FIELD);
+            auto remaining = size_t(ATSC_SYMBOLS_PER_FIELD);
             while (remaining > 0) {
                 auto transfer = std::min(remaining, samples);
 
@@ -204,10 +199,9 @@ private:
     }
 
     unique_freeable_ptr<SoapySDR::Device> device;
-    std::unique_ptr<atsc_encoder> encoder;
+    std::unique_ptr<atsc::atsc_encoder> encoder;
     SoapySDR::Stream* stream;
     size_t samples;
-    unique_freeable_ptr<int16_t> result;
     obs_output_t* output;
 
     pthread_t thread;
@@ -277,10 +271,10 @@ private:
     }
 
     static bool gain_changed(void* ctx, obs_properties_t *props, obs_property_t *property, obs_data_t *settings) {
-        atsc_output* self = (atsc_output*)ctx;
+        atsc_output* self = g_atsc;
 
         auto gain = obs_data_get_double(settings, "rf_gain");
-        if (g_output_running) {
+        if (g_output_running && self) {
             self->change_gain(gain);
         }
         return false;
@@ -344,8 +338,8 @@ private: /* obs interface */
         avcodec_parameters_copy(stream->codecpar, aparam);
 
         // FIXME: freeme
-        uint8_t* buffer = (uint8_t*)av_malloc(188 * atsc_parameters::ATSC_DATA_SEGMENTS);
-        self->fmt_ctx->pb = avio_alloc_context(buffer, 188 * atsc_parameters::ATSC_DATA_SEGMENTS, 1, ctx, NULL, atsc_output_packet, NULL);
+        uint8_t* buffer = (uint8_t*)av_malloc(ATSC_MPEG2_BYTES * ATSC_DATA_SEGMENTS);
+        self->fmt_ctx->pb = avio_alloc_context(buffer, ATSC_MPEG2_BYTES * ATSC_DATA_SEGMENTS, 1, ctx, NULL, atsc_output_packet, NULL);
 
         int ret = avformat_write_header(self->fmt_ctx, NULL); (void)ret;
         return true;
@@ -374,8 +368,6 @@ private: /* obs interface */
     }
 
     static obs_properties_t * _obs_properties(void *ctx) {
-        atsc_output* self = (atsc_output*)ctx;
-
         static obs_properties_t* props = nullptr;
         if (props != nullptr) {
             return props;
@@ -400,7 +392,7 @@ private: /* obs interface */
 
         list = obs_properties_add_list(props, "rf_freq", "RF Frequency", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
         auto gain = obs_properties_add_float_slider(props, "rf_gain", "Gain", 0, 100, 1);
-        obs_property_set_modified_callback2(gain, gain_changed, self);
+        obs_property_set_modified_callback2(gain, gain_changed, NULL);
 
         obs_properties_add_int(props, "atsc_channel_mj", "Channel", 1, 999, 1);
         obs_properties_add_int(props, "atsc_channel_mn", "Channel", 1, 99, 1);
